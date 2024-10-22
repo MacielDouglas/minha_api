@@ -10,16 +10,22 @@ type Card {
 }
 
 type Query {
-    getCard(input: CardFilter): [Card]!
+    card(action: String!, id: ID): CardResponse
+
 }
 
-input CardFilter {
-    id: ID
-}
 
 type Mutation {
-    createCard(newCard: NewCardInput!): Card
+    cardMutation(action: String!, newCard: NewCardInput, id: ID, updateCardInput: UpdateCardInput): CardMutationResponse!
+
 }
+
+type CardResponse {
+    card: [Card]
+    success: Boolean
+    message: String
+}
+
 
 input NewCardInput {
     street: [String]!
@@ -27,6 +33,21 @@ input NewCardInput {
     number: Int
     startDate: String
     endDate: String
+
+}
+
+input UpdateCardInput {
+    street: [String]
+    userId: String
+    number: Int
+    startDate: String
+    endDate: String
+}
+
+type CardMutationResponse {
+    success: Boolean
+    message: String
+    card: Card
 }
 `;
 

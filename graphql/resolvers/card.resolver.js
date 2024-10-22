@@ -1,83 +1,139 @@
-import mongoose from "mongoose";
 import Card from "../../models/card.model.js";
 import { verifyAuthorization } from "../../utils/utils.js";
+import {
+  findCardById,
+  findNextNumber,
+  validateObjectId,
+} from "../../utils/card.utils.js";
 
 const cardResolver = {
   Query: {
-    getCard: async (_, { id, limit = 50, skip = 0 }, { req }) => {
-      try {
-        // Verifica a autorização do usuário
-        const decodedToken = verifyAuthorization(req);
-        if (!decodedToken) {
-          throw new Error("Você não tem permissão para acessar cartões.");
-        }
+    card: async (_, { action, id, limit = 50, skip = 0 }, { req }) => {
+      const decodedToken = verifyAuthorization(req);
+      if (!decodedToken) {
+        throw new Error("Você não tem permissão.");
+      }
 
-        // Se o ID for fornecido, buscar pelo ID com sanitização
-        if (id) {
-          if (!mongoose.Types.ObjectId.isValid(id)) {
-            throw new Error("ID inválido.");
+      switch (action) {
+        case "get":
+          try {
+            if (id) {
+              const card = await findCardById(id);
+              console.log(card);
+              return {
+                message: "Cartão encontrado.",
+                success: true,
+                card: [card],
+              };
+            }
+
+            const cards = await Card.find({})
+              .limit(Math.min(limit, 100))
+              .skip(skip)
+              .lean(); // Usa lean para melhorar performance
+
+            return {
+              message: "Cartões encontrados.",
+              success: true,
+              card: cards.map((card) => ({ ...card, id: card._id.toString() })),
+            };
+          } catch (error) {
+            throw new Error("Erro ao buscar cartões.");
           }
 
-          const card = await Card.findById(id);
-          //   .select(projection);
-          if (!card) {
-            throw new Error("Cartão não encontrado.");
-          }
-
-          return card;
-        }
-
-        // Se o ID não for fornecido, retorna todos os cartões com limite e paginação
-        const cards = await Card.find({})
-          //   .select(projection)  // Apenas os campos necessários
-          .limit(Math.min(limit, 100)) // Limitar a 100 resultados no máximo
-          .skip(skip); // Paginação
-
-        return cards;
-      } catch (error) {
-        throw new Error(`Erro ao buscar cartões: ${error.message}`);
+        default:
+          throw new Error("Ação inválida.");
       }
     },
   },
 
   Mutation: {
-    createCard: async (_, { newCard }, { req }) => {
-      try {
-        const decodedToken = verifyAuthorization(req);
-        if (!decodedToken) {
-          throw new Error(
-            "Você não tem permissão para adicionar um novo endereço."
-          );
-        }
+    cardMutation: async (
+      _,
+      { action, id, newCard, updateCardInput },
+      { req }
+    ) => {
+      const decodedToken = verifyAuthorization(req);
+      if (!decodedToken) {
+        throw new Error("Você não tem permissão.");
+      }
 
-        const findNextNumber = async () => {
-          const existingNumbers = await Card.find().distinct("number").exec(); // Busca todos os números existentes
+      switch (action) {
+        case "create":
+          try {
+            const number = await findNextNumber();
+            const card = new Card({ ...newCard, number });
 
-          // Se não houver nenhum número existente, comece com 1
-          if (existingNumbers.length === 0) {
-            return 1;
+            return {
+              message: `Novo cartão criado com número ${card.number}.`,
+              success: true,
+              card: await card.save(),
+            };
+          } catch (error) {
+            throw new Error(`Erro ao criar cartão: ${error.message}`);
           }
 
-          const uniqueNumbers = existingNumbers
-            .map(Number)
-            .sort((a, b) => a - b); // Ordena e converte os números em inteiros
+        case "update":
+          try {
+            if (!id) throw new Error("ID necessário.");
+            const card = await findCardById(id);
 
-          // Percorrer o array para encontrar o número faltando
-          for (let i = 0; i < uniqueNumbers.length - 1; i++) {
-            if (uniqueNumbers[i + 1] !== uniqueNumbers[i] + 1) {
-              return uniqueNumbers[i] + 1; // Retorna o número que está faltando
+            console.log(card.id);
+            const cardUpdate = {};
+            const { street, userId } = updateCardInput;
+
+            if (Array.isArray(street)) {
+              cardUpdate.street = street;
+            } else {
+              await Card.deleteOne({ _id: id });
+              return {
+                message: "Cartão deletado.",
+                success: true,
+                card: null,
+              };
             }
+
+            if (!userId || userId.trim() === "") {
+              cardUpdate.endDate = new Date().toISOString();
+              cardUpdate.startDate = null;
+              cardUpdate.userId = null;
+            } else {
+              cardUpdate.userId = userId;
+              cardUpdate.startDate = new Date().toISOString();
+              cardUpdate.endDate = null;
+            }
+
+            const updateResult = await Card.updateOne({ _id: id }, cardUpdate);
+            if (updateResult.nModified === 0) {
+              throw new Error("Falha ao atualizar.");
+            }
+
+            return {
+              message: "Cartão atualizado.",
+              success: true,
+              card: { ...card, ...cardUpdate },
+            };
+          } catch (error) {
+            throw new Error(`Erro ao atualizar cartão: ${error.message}`);
           }
 
-          // Se não houver número faltando, retorna o próximo número na sequência
-          return uniqueNumbers[uniqueNumbers.length - 1] + 1;
-        };
+        case "delete":
+          try {
+            validateObjectId(id);
+            const card = await findCardById(id);
+            // console.log(card);
+            await Card.deleteOne({ _id: card.id });
+            return {
+              message: "Cartão deletado.",
+              success: true,
+              card: null,
+            };
+          } catch (error) {
+            throw new Error(`Erro ao deletar cartão: ${error.message}`);
+          }
 
-        const number = await findNextNumber();
-        const card = new Card({ ...newCard, number });
-        return await card.save();
-      } catch (error) {
-        throw new Error(`Erro ao criar um novo cartão: ${error.message}`);
+        default:
+          throw new Error("Ação inválida.");
       }
     },
   },

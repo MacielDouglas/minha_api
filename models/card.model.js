@@ -7,6 +7,7 @@ const cardSchema = new Schema(
         type: Types.ObjectId, // Array de ObjectIds que referenciam o modelo Address
         ref: "Address",
         required: true,
+        unique: true,
       },
     ],
     userId: {
@@ -31,7 +32,6 @@ const cardSchema = new Schema(
   { timestamps: true } // Adiciona os timestamps automáticos para createdAt e updatedAt
 );
 
-// Validação pré-salvamento para garantir que nenhum outro Card tenha os mesmos IDs de street (Address)
 cardSchema.pre("save", async function (next) {
   const card = this;
 
@@ -49,6 +49,73 @@ cardSchema.pre("save", async function (next) {
         ", "
       )}`
     );
+  }
+
+  next();
+});
+
+// Middleware para updateOne
+cardSchema.pre("updateOne", async function (next) {
+  const update = this.getUpdate();
+  const street = update.$set?.street || update.street;
+
+  if (street) {
+    // Verifica se há outro Card com os mesmos street IDs
+    const duplicateCard = await Card.findOne({
+      street: { $in: street }, // Verifica se algum Card tem um dos mesmos IDs de Address
+    });
+
+    if (duplicateCard) {
+      // Compara se o card encontrado tem o mesmo id do card que está sendo atualizado
+      if (duplicateCard._id.toString() === this._conditions._id.toString()) {
+        // Se for o mesmo cartão, permitimos adicionar os novos endereços
+        const newStreets = street.filter(
+          (id) => !duplicateCard.street.includes(id)
+        );
+
+        // Adiciona os novos endereços ao cartão
+        update.$set = {
+          ...update.$set,
+          street: [...duplicateCard.street, ...newStreets],
+        };
+      } else {
+        // Caso contrário, retorna erro informando que os endereços já são usados por outro cartão
+        const duplicatedIds = duplicateCard.street.filter((id) =>
+          street.includes(id)
+        );
+        throw new Error(
+          `Os endereços com os seguintes IDs já estão associados a outro cartão: ${duplicatedIds.join(
+            ", "
+          )}`
+        );
+      }
+    }
+  }
+
+  next();
+});
+
+// Middleware para findOneAndUpdate
+cardSchema.pre("findOneAndUpdate", async function (next) {
+  const update = this.getUpdate();
+  const street = update.$set?.street || update.street;
+
+  if (street) {
+    // Verifica se há outro Card com os mesmos street IDs
+    const duplicateCard = await Card.findOne({
+      street: { $in: street }, // Verifica se algum Card tem um dos mesmos IDs de Address
+    });
+
+    if (duplicateCard) {
+      const duplicatedIds = duplicateCard.street.filter((id) =>
+        street.includes(id)
+      );
+      throw new Error(
+        `Os endereços com os seguintes IDs já estão associados a outro cartão: ${duplicatedIds.join(
+          ", "
+        )}`
+      );
+    }
   }
 
   next();
