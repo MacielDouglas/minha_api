@@ -15,18 +15,29 @@ type Address {
 }
 
 type Query {
-    getAddresses(input: AddressFilters): [Address]!
+    address(action: String!, id: ID, input: FilterAddressInput!): AddressResponse
+
+}
+input FilterAddressInput {
+    street: String
+    neighborhood: String
+    city: String!
+    confirmed: Boolean!
+    active: Boolean!
+
 }
 
-input AddressFilters {
-    city: String
-    neighborhood: String
-    street: String
+type AddressResponse {
+    address: [Address]
+    success: Boolean
+    message: String
 }
+
+
+
 
 type Mutation {
-    createAddress(newAddress: NewAddressInput!): Address
-
+    addressMutation(action: String!, newAddress: NewAddressInput, id: ID, updateAddressInput: UpdateAddressInput): AddressMutationResponse!
 }
 
 input NewAddressInput {
@@ -40,6 +51,25 @@ input NewAddressInput {
     confirmed: Boolean!
     active: Boolean!
     visited: String
+}
+input UpdateAddressInput {
+    userId: String
+    street: String
+    number: String
+    neighborhood: String
+    city: String
+    gps: String
+    complement: String
+    confirmed: Boolean
+    active: Boolean
+    visited: String
+}
+
+type AddressMutationResponse {
+    success: Boolean
+    message: String
+    address: Address
+
 }
 `;
 

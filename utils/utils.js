@@ -92,27 +92,72 @@ export const validateUserCredentials = async (email, password) => {
 };
 
 export const verifyAuthorization = (req) => {
-  const authorizationHeader = req.headers.cookie || req.headers.authorization;
+  // Recupera o cabeçalho de autorização ou cookies
+  const authorizationHeader = req.headers.authorization || req.headers.cookie;
 
+  // Verifica se o cabeçalho foi fornecido
   if (!authorizationHeader) {
-    throw new Error("Token de autorização não fornecido.");
+    throw new Error("Acesso negado. Token não fornecido.");
   }
 
-  // Suporte para Bearer Token no cabeçalho Authorization
+  // Inicializa a variável do token
   let token;
+
+  // Verifica o formato do Bearer Token no cabeçalho Authorization
   if (authorizationHeader.startsWith("Bearer ")) {
-    token = authorizationHeader.split(" ")[1];
-  } else if (authorizationHeader.includes("access_token=")) {
-    token = authorizationHeader.split("access_token=")[1];
+    token = authorizationHeader.slice(7); // Usa slice para extrair o token sem dividir arrays
+  }
+  // Verifica se o token está nos cookies (acessível no formato access_token)
+  else if (authorizationHeader.includes("access_token=")) {
+    const tokenPart = authorizationHeader.split("access_token=")[1];
+    token = tokenPart.split(";")[0]; // Garante que apenas o valor do token seja extraído, sem o resto dos cookies
   }
 
+  // Se o token não for válido
   if (!token) {
-    throw new Error("Token de autorização inválido.");
+    throw new Error("Acesso negado. Token inválido ou ausente.");
   }
 
   try {
-    return jwt.verify(token, process.env.JWT_SECRET);
+    // Verifica e decodifica o token JWT
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Retorna o token decodificado
+    return decoded;
   } catch (error) {
-    throw new Error("Token de autorização inválido ou expirado.");
+    // Especifica se o erro é de expiração ou outro tipo de erro
+    const errorMessage =
+      error.name === "TokenExpiredError"
+        ? "Sessão expirada. Faça login novamente."
+        : "Acesso negado. Token inválido.";
+
+    // Lança um erro genérico para segurança
+    throw new Error(errorMessage);
   }
 };
+
+// export const verifyAuthorization = (req) => {
+//   const authorizationHeader = req.headers.cookie || req.headers.authorization;
+
+//   if (!authorizationHeader) {
+//     throw new Error("Token de autorização não fornecido.");
+//   }
+
+//   // Suporte para Bearer Token no cabeçalho Authorization
+//   let token;
+//   if (authorizationHeader.startsWith("Bearer ")) {
+//     token = authorizationHeader.split(" ")[1];
+//   } else if (authorizationHeader.includes("access_token=")) {
+//     token = authorizationHeader.split("access_token=")[1];
+//   }
+
+//   if (!token) {
+//     throw new Error("Token de autorização inválido.");
+//   }
+
+//   try {
+//     return jwt.verify(token, process.env.JWT_SECRET);
+//   } catch (error) {
+//     throw new Error("Token de autorização inválido ou expirado.");
+//   }
+// };
