@@ -15,7 +15,7 @@ type Address {
 }
 
 type Query {
-    address(action: String!, id: ID, input: FilterAddressInput!): AddressResponse
+    address(action: String!, id: ID, input: FilterAddressInput): AddressResponse
 
 }
 input FilterAddressInput {
