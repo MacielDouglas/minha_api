@@ -16,14 +16,16 @@ type User {
     myCards: [String]
     myTotalCards: [String]
     comments: [Comment] 
+    idToken: String
 }
 
 type Query {
-    user(action: String!, id:ID, email:String, password: String): UserResponse
+    user(action: String!, id:ID, email:String, password: String, ): UserResponse
+    firebaseConfig: EncryptedConfig
 }
 
 type Mutation {
-    userMutation(action: String!, user: NewUserInput, id: ID, updateUserInput: UpdateUserInput): UserMutationResponse!
+    userMutation(action: String!, user: NewUserInput, id: ID, updateUserInput: UpdateUserInput, idToken: String): UserMutationResponse!
 }
 
 type UserResponse {
@@ -53,7 +55,9 @@ input NewUserInput {
     isSS: Boolean
 }
 
-
+type EncryptedConfig {
+  encryptedData: String
+}
 `;
 
 export default userTypeDef;

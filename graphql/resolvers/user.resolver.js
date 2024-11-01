@@ -8,6 +8,14 @@ import {
   validateUserCredentials,
   verifyAuthorization,
 } from "../../utils/utils.js";
+import fireAdmin from "../../firebase/firebase.js";
+import jwt from "jsonwebtoken";
+import CryptoJS from "crypto-js";
+
+function encryptData(data) {
+  const secretKey = process.env.SECRET_KEY; // Armazene isso em um arquivo .env
+  return CryptoJS.AES.encrypt(JSON.stringify(data), secretKey).toString();
+}
 
 const userResolver = {
   Query: {
@@ -53,9 +61,24 @@ const userResolver = {
           } catch (error) {
             throw new Error(`Error logout User: ${error.message}`);
           }
+
         default:
           throw new Error("Ação inválida.");
       }
+    },
+
+    firebaseConfig: () => {
+      const data = {
+        apiKey: process.env.FIREBASE_API_KEY,
+        authDomain: process.env.FIREBASE_AUTH_DOMAIN,
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+        messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
+        appId: process.env.FIREBASE_APP_ID,
+      };
+
+      const encryptedData = encryptData(data);
+      return { encryptedData: encryptedData };
     },
   },
 
@@ -204,6 +227,58 @@ const userResolver = {
           } catch (error) {
             // Melhorar a mensagem de erro
             throw new Error(`Erro ao atualizar o usuário: ${error.message}`);
+          }
+
+        case "google":
+          try {
+            const idToken = req.body.variables.idToken;
+            const decodedToken = await fireAdmin.auth().verifyIdToken(idToken);
+            const uid = decodedToken.uid;
+            const userRecord = await fireAdmin.auth().getUser(uid);
+
+            const userData = {
+              uid: userRecord.uid,
+              email: userRecord.email,
+              name: userRecord.displayName,
+              photoUrl: userRecord.photoURL,
+            };
+
+            const existingEmail = await User.findOne({ email: userData.email });
+
+            if (!existingEmail) {
+              const generatePassword =
+                Math.random().toString(36).slice(-8) +
+                Math.random().toString(36).slice(-8);
+
+              const hashedPassword = bcrypt.hashSync(generatePassword, 10);
+              const sanitizedEmail = userData.email.trim().toLowerCase();
+              const sanitizedName = userData.name.trim();
+
+              const newUser = new User({
+                ...userData,
+                name: sanitizedName,
+                email: sanitizedEmail,
+                password: hashedPassword,
+                profilePicture: userData.photoUrl,
+              });
+
+              await newUser.save();
+            }
+
+            const user = await validateUserCredentials(
+              userData.email,
+              "google"
+            );
+            const token = createToken(user);
+            setTokenCookie(res, token);
+            console.log("Conectado com google", user.name);
+            return {
+              success: true,
+              message: `Usuário: ${user.name}, encontrado.`,
+              user: sanitizeUser(user),
+            };
+          } catch (error) {
+            throw new Error(`Error login Google: ${error.message}`);
           }
 
         default:

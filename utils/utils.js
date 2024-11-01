@@ -85,8 +85,10 @@ export const validateUserCredentials = async (email, password) => {
 
   if (!user) throw new Error("Credenciais inválidas.");
 
-  const isValidPassword = await bcrypt.compare(password, user.password);
-  if (!isValidPassword) throw new Error("Credenciais inválidas.");
+  if (password !== "google") {
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    if (!isValidPassword) throw new Error("Credenciais inválidas.");
+  }
 
   return user;
 };
@@ -135,29 +137,3 @@ export const verifyAuthorization = (req) => {
     throw new Error(errorMessage);
   }
 };
-
-// export const verifyAuthorization = (req) => {
-//   const authorizationHeader = req.headers.cookie || req.headers.authorization;
-
-//   if (!authorizationHeader) {
-//     throw new Error("Token de autorização não fornecido.");
-//   }
-
-//   // Suporte para Bearer Token no cabeçalho Authorization
-//   let token;
-//   if (authorizationHeader.startsWith("Bearer ")) {
-//     token = authorizationHeader.split(" ")[1];
-//   } else if (authorizationHeader.includes("access_token=")) {
-//     token = authorizationHeader.split("access_token=")[1];
-//   }
-
-//   if (!token) {
-//     throw new Error("Token de autorização inválido.");
-//   }
-
-//   try {
-//     return jwt.verify(token, process.env.JWT_SECRET);
-//   } catch (error) {
-//     throw new Error("Token de autorização inválido ou expirado.");
-//   }
-// };
