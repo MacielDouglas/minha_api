@@ -40,12 +40,14 @@ export const existing = async (id, type) => {
   }
   return document;
 };
+// secure: process.env.NODE_ENV === "production", // Garante a segurança em produção
+// sameSite: "None", // Permite que os cookies sejam enviados em requisições cross-origin
 
 export const setTokenCookie = (res, token) => {
   res.cookie("access_token", token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production", // Garante a segurança em produção
-    sameSite: "None", // Permite que os cookies sejam enviados em requisições cross-origin
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
     maxAge: 3600000, // 1 hora
   });
 };
