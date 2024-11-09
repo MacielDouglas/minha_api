@@ -44,8 +44,8 @@ export const existing = async (id, type) => {
 export const setTokenCookie = (res, token) => {
   res.cookie("access_token", token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+    secure: process.env.NODE_ENV === "production", // Garante a segurança em produção
+    sameSite: "None", // Permite que os cookies sejam enviados em requisições cross-origin
     maxAge: 3600000, // 1 hora
   });
 };
@@ -95,9 +95,7 @@ export const validateUserCredentials = async (email, password) => {
 
 export const verifyAuthorization = (req) => {
   // Recupera o cabeçalho de autorização ou cookies
-  console.log(req.headers);
   const authorizationHeader = req.headers.authorization || req.headers.cookie;
-  console.log(authorizationHeader);
 
   // Verifica se o cabeçalho foi fornecido
   if (!authorizationHeader) {
