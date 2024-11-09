@@ -95,7 +95,9 @@ export const validateUserCredentials = async (email, password) => {
 
 export const verifyAuthorization = (req) => {
   // Recupera o cabeçalho de autorização ou cookies
+  console.log(req.headers);
   const authorizationHeader = req.headers.authorization || req.headers.cookie;
+  console.log(authorizationHeader);
 
   // Verifica se o cabeçalho foi fornecido
   if (!authorizationHeader) {
