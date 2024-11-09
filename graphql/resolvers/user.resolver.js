@@ -253,10 +253,12 @@ const userResolver = {
               const hashedPassword = bcrypt.hashSync(generatePassword, 10);
               const sanitizedEmail = userData.email.trim().toLowerCase();
               const sanitizedName = userData.name.trim();
+              const randomNumber = Math.floor(10000 + Math.random() * 90000);
+              const uniqueName = sanitizedName + randomNumber;
 
               const newUser = new User({
                 ...userData,
-                name: sanitizedName,
+                name: uniqueName,
                 email: sanitizedEmail,
                 password: hashedPassword,
                 profilePicture: userData.photoUrl,

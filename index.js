@@ -66,6 +66,7 @@ const start = async () => {
     "/graphql",
     cors({
       origin: ["http://localhost:5173", "https://direcciones.vercel.app"],
+      credentials: true,
     }),
     express.json(),
     expressMiddleware(server, {

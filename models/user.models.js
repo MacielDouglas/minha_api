@@ -32,6 +32,10 @@ const userSchema = new Schema(
       type: Boolean,
       default: false,
     },
+    isSCards: {
+      type: Boolean,
+      default: false,
+    },
     myCards: {
       type: [String],
     },

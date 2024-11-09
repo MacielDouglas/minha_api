@@ -13,6 +13,7 @@ type User {
     isAdmin: Boolean!
     group: String!
     isSS: Boolean!
+    isSCards: Boolean!
     myCards: [String]
     myTotalCards: [String]
     comments: [Comment] 
